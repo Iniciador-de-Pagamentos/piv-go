@@ -775,34 +775,11 @@ func (yk *YubiKey) Certificate(slot Slot) (*x509.Certificate, error) {
 
 // FormFactor returns the physical form factor of the YubiKey.
 func (yk *YubiKey) FormFactor() (Formfactor, error) {
-	if err := ykSelectApplication(yk.tx, aidManagement[:]); err != nil {
-		return 0, fmt.Errorf("selecting management applet: %v", err)
-	}
-	defer ykSelectApplication(yk.tx, aidPIV[:])
-	// INS_READ_CONFIG = 0x1D
-	// https://github.com/Yubico/yubikey-manager/blob/9fe76be2cbf5e9a3b5a9a8d78411949a028b3745/yubikit/management.py#L512
-	cmd := apdu{instruction: 0x1D}
-	resp, err := yk.tx.Transmit(cmd)
+	info, err := yk.DeviceInfo()
 	if err != nil {
-		return 0, fmt.Errorf("reading device info: %v", err)
+		return 0, err
 	}
-	if len(resp) < 1 {
-		return 0, fmt.Errorf("invalid response length")
-	}
-	payload := resp[1:]
-	// TAG_FORM_FACTOR = 0x04
-	// https://github.com/Yubico/yubikey-manager/blob/9fe76be2cbf5e9a3b5a9a8d78411949a028b3745/yubikit/management.py#L211
-	formFactorData, err := findTLVTag(payload, 0x04)
-	if err != nil {
-		if err == errTagNotFound {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("parsing response: %v", err)
-	}
-	if len(formFactorData) == 0 {
-		return 0, nil
-	}
-	return Formfactor(formFactorData[0]), nil
+	return info.FormFactor(), nil
 }
 
 // findTLVTag searches through TLV (Tag-Length-Value) encoded data for a
