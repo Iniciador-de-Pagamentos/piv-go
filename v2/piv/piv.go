@@ -102,6 +102,9 @@ const (
 	insAttest        = 0xf9
 	insGetSerial     = 0xf8
 	insGetMetadata   = 0xf7
+
+	insReadConfig  = 0x1d
+	insWriteConfig = 0x1c
 )
 
 // YubiKey is an exclusive open connection to a YubiKey smart card. While open,
@@ -121,7 +124,6 @@ type YubiKey struct {
 	// YubiKey's version or PIV version? A NEO reports v1.0.4. Figure this out
 	// before exposing an API.
 	version *version
-
 }
 
 // Close releases the connection to the smart card.
@@ -727,7 +729,11 @@ func ykSetRetries(tx *scTx, managementKey []byte, pin string, pinRetries int, pu
 	return nil
 }
 
-func ykSelectApplication(tx *scTx, id []byte) error {
+type apduTransmitter interface {
+	Transmit(apdu) ([]byte, error)
+}
+
+func ykSelectApplication(tx apduTransmitter, id []byte) error {
 	cmd := apdu{
 		instruction: insSelectApplication,
 		param1:      0x04,
